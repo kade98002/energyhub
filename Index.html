@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ Energy Hub</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #020617;
+      --surface:   rgba(15,23,42,0.92);
+      --border:    rgba(255,255,255,0.07);
+      --solar:     #f59e0b;
+      --grid:      #3b82f6;
+      --ev:        #10b981;
+      --utility:   #a78bfa;
+      --muted:     rgba(148,163,184,0.5);
+      --muted2:    rgba(148,163,184,0.25);
+      --font:      'DM Sans', sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(245,158,11,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(59,130,246,0.05) 0%, transparent 60%);
+      color: #e2e8f0;
+      font-family: var(--font);
+      min-height: 100vh;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px;
+      background: rgba(2,6,23,0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: rgba(245,158,11,0.18);
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
+    }
+    .logo-text { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+    .topbar-right { display: flex; align-items: center; gap: 16px; }
+    .status-dots { display: flex; gap: 12px; }
+    .dot-wrap { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      position: relative; flex-shrink: 0;
+    }
+    .dot.pulse::after {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      animation: ping 1.5s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .dot.solar-dot { background: var(--solar); }
+    .dot.solar-dot::after { background: var(--solar); }
+    .dot.grid-dot { background: var(--grid); }
+    .dot.grid-dot::after { background: var(--grid); }
+    .dot.ev-dot { background: var(--ev); }
+    .dot.ev-dot::after { background: var(--ev); }
+    .dot.off { background: #374151; }
+    #clock { font-family: var(--mono); font-size: 12px; color: rgba(245,158,11,0.7); }
+
+    @keyframes ping {
+      75%, 100% { transform: scale(2); opacity: 0; }
+    }
+
+    /* ── TABS ── */
+    .tabs-wrap { padding: 16px 20px 0; }
+    .tabs {
+      display: inline-flex; gap: 2px; padding: 4px;
+      background: rgba(255,255,255,0.04); border-radius: 12px;
+    }
+    .tab {
+      padding: 7px 16px; border-radius: 9px; border: none;
+      background: transparent; color: var(--muted); font-family: var(--font);
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+    }
+    .tab:hover { color: #e2e8f0; }
+    .tab.active { background: rgba(245,158,11,0.18); color: var(--solar); }
+
+    /* ── MAIN ── */
+    .main { padding: 16px 20px 40px; max-width: 1100px; margin: 0 auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── GRID LAYOUTS ── */
+    .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 14px; }
+    .grid-3-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+
+    @media (max-width: 700px) {
+      .grid-4 { grid-template-columns: 1fr 1fr; }
+      .grid-3-1, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .status-dots { display: none; }
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+    .card.glow { box-shadow: 0 0 30px rgba(245,158,11,0.07), 0 4px 24px rgba(0,0,0,0.35); }
+
+    /* ── KPI CARD ── */
+    .kpi-icon { font-size: 18px; margin-bottom: 8px; }
+    .kpi-badge {
+      float: right; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 6px; margin-top: 2px;
+    }
+    .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted2); margin-bottom: 4px; }
+    .kpi-val { font-family: var(--mono); font-size: 22px; font-weight: 700; line-height: 1; }
+    .kpi-sub { font-size: 11px; color: var(--muted2); margin-top: 4px; }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.18em; color: var(--muted2);
+      margin-bottom: 14px;
+    }
+
+    /* ── CHART CONTAINER ── */
+    .chart-wrap { position: relative; }
+    .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .legend-line { width: 14px; height: 2px; border-radius: 2px; }
+
+    /* ── PIE LABELS ── */
+    .pie-labels { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .pie-row { display: flex; justify-content: space-between; align-items: center; }
+    .pie-name { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+    .pie-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .pie-pct { font-family: var(--mono); font-size: 12px; font-weight: 700; }
+
+    /* ── SUSTAINABILITY BARS ── */
+    .sus-row { margin-bottom: 14px; }
+    .sus-top { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+    .sus-label { color: var(--muted); }
+    .sus-val { font-family: var(--mono); font-weight: 700; }
+    .sus-track { height: 4px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .sus-fill { height: 100%; border-radius: 4px; opacity: 0.8; }
+
+    /* ── INFO TABLE ── */
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 12px;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { color: var(--muted); }
+    .info-val { font-weight: 600; }
+
+    /* ── SOC ARC ── */
+    .soc-wrap { display: flex; flex-direction: column; align-items: center; }
+    .soc-svg { overflow: visible; }
+    .soc-badges { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── VW STATS ── */
+    .vw-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; flex: 1; }
+    .vw-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 3px; }
+    .vw-stat-val { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+    .vw-inner { display: flex; align-items: center; gap: 24px; }
+
+    @media (max-width: 600px) {
+      .vw-inner { flex-direction: column; }
+      .vw-stats { grid-template-columns: repeat(2,1fr); }
+    }
+
+    /* ── SETUP BOX ── */
+    .setup-box {
+      margin-top: 14px; padding: 12px 14px; border-radius: 12px; font-size: 11px; line-height: 1.6;
+    }
+    .setup-title { font-weight: 700; margin-bottom: 4px; }
+    code { font-family: var(--mono); font-size: 10px; background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; }
+
+    /* ── FOOTER ── */
+    .footer { text-align: center; font-size: 10px; color: rgba(148,163,184,0.2); margin-top: 32px; }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-icon">⚡</div>
+    <span class="logo-text">Energy Hub</span>
+  </div>
+  <div class="topbar-right">
+    <div class="status-dots">
+      <div class="dot-wrap"><div class="dot solar-dot pulse"></div>Solar</div>
+      <div class="dot-wrap"><div class="dot grid-dot pulse"></div>BC Hydro</div>
+      <div class="dot-wrap"><div class="dot ev-dot pulse"></div>VW ID.</div>
+      <div class="dot-wrap"><div class="dot off"></div><span style="color:rgba(148,163,184,0.3)">Home Asst.</span></div>
+    </div>
+    <span id="clock">--:--:--</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-wrap">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('overview')">⚡ Overview</button>
+    <button class="tab" onclick="showTab('solar')">☀️ Solar</button>
+    <button class="tab" onclick="showTab('vehicle')">🚗 Vehicle</button>
+    <button class="tab" onclick="showTab('utility')">🏠 Utility</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ══ OVERVIEW ══ -->
+  <div id="page-overview" class="page active">
+
+    <!-- KPI row -->
+    <div class="grid-4">
+      <div class="card glow">
+        <div class="kpi-icon">☀️ <span class="kpi-badge" style="background:rgba(245,158,11,0.15);color:#f59e0b">LIVE</span></div>
+        <div class="kpi-label">Solar Output</div>
+        <div class="kpi-val" style="color:#f59e0b">3.84 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kW</span></div>
+        <div class="kpi-sub">22.6 kWh today</div>
+      </div>
+      <div class="card glow">
+        <div class="kpi-icon">⚡ <span class="kpi-badge" style="background:rgba(16,185,129,0.15);color:#10b981">LIVE</span></div>
+        <div class="kpi-label">Grid Flow</div>
+        <div class="kpi-val" style="color:#10b981">+2.64 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kW</span></div>
+        <div class="kpi-sub">Exporting ↑</div>
+      </div>
+      <div class="card glow">
+        <div class="kpi-icon">🚗 <span class="kpi-badge" style="background:rgba(59,130,246,0.15);color:#3b82f6">LIVE</span></div>
+        <div class="kpi-label">EV Charging</div>
+        <div class="kpi-val" style="color:#3b82f6">7.4 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kW</span></div>
+        <div class="kpi-sub">72% · 218 km range</div>
+      </div>
+      <div class="card glow">
+        <div class="kpi-icon">🏠 <span class="kpi-badge" style="background:rgba(167,139,250,0.15);color:#a78bfa">LIVE</span></div>
+        <div class="kpi-label">Month Bill</div>
+        <div class="kpi-val" style="color:#a78bfa">$74.30</div>
+        <div class="kpi-sub">612 kWh used</div>
+      </div>
+    </div>
+
+    <!-- Chart + Pie -->
+    <div class="grid-3-1">
+      <div class="card">
+        <div class="section-label"><span>📈</span> 24h Energy Flow</div>
+        <div class="chart-wrap"><canvas id="flowChart" height="200"></canvas></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-line" style="background:#f59e0b"></div>Solar</div>
+          <div class="legend-item"><div class="legend-line" style="background:#a78bfa"></div>Home</div>
+          <div class="legend-item"><div class="legend-line" style="background:#10b981"></div>EV</div>
+          <div class="legend-item"><div class="legend-line" style="background:#3b82f6"></div>Grid</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-label"><span>🔋</span> Energy Sources</div>
+        <div class="chart-wrap"><canvas id="pieChart" height="180"></canvas></div>
+        <div class="pie-labels">
+          <div class="pie-row"><div class="pie-name"><div class="pie-dot" style="background:#f59e0b"></div>Solar</div><div class="pie-pct" style="color:#f59e0b">68%</div></div>
+          <div class="pie-row"><div class="pie-name"><div class="pie-dot" style="background:#3b82f6"></div>BC Hydro</div><div class="pie-pct" style="color:#3b82f6">24%</div></div>
+          <div class="pie-row"><div class="pie-name"><div class="pie-dot" style="background:#10b981"></div>Battery</div><div class="pie-pct" style="color:#10b981">8%</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly + Sustainability -->
+    <div class="grid-3">
+      <div class="card">
+        <div class="section-label"><span>📅</span> Weekly Generation vs Consumption</div>
+        <div class="chart-wrap"><canvas id="weeklyChart" height="170"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-label"><span>🌱</span> Sustainability</div>
+        <div class="sus-row">
+          <div class="sus-top"><span class="sus-label">CO₂ Avoided Today</span><span class="sus-val" style="color:#10b981">1.94 kg</span></div>
+          <div class="sus-track"><div class="sus-fill" style="background:#10b981;width:70%"></div></div>
+        </div>
+        <div class="sus-row">
+          <div class="sus-top"><span class="sus-label">Self-Consumption</span><span class="sus-val" style="color:#f59e0b">68%</span></div>
+          <div class="sus-track"><div class="sus-fill" style="background:#f59e0b;width:68%"></div></div>
+        </div>
+        <div class="sus-row">
+          <div class="sus-top"><span class="sus-label">Grid Independence</span><span class="sus-val" style="color:#a78bfa">76%</span></div>
+          <div class="sus-track"><div class="sus-fill" style="background:#a78bfa;width:76%"></div></div>
+        </div>
+        <div class="sus-row">
+          <div class="sus-top"><span class="sus-label">Year Solar Gen.</span><span class="sus-val" style="color:#3b82f6">4,120 kWh</span></div>
+          <div class="sus-track"><div class="sus-fill" style="background:#3b82f6;width:55%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SOLAR ══ -->
+  <div id="page-solar" class="page">
+    <div class="card glow" style="margin-bottom:14px">
+      <div class="section-label"><span>☀️</span> EMA Solar System · Live</div>
+      <div class="grid-4">
+        <div><div class="kpi-label">Current Output</div><div class="kpi-val" style="color:#f59e0b">3.84 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kW</span></div></div>
+        <div><div class="kpi-label">Today</div><div class="kpi-val" style="color:#fbbf24">22.6 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kWh</span></div></div>
+        <div><div class="kpi-label">This Month</div><div class="kpi-val" style="color:#f59e0b">487 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kWh</span></div></div>
+        <div><div class="kpi-label">This Year</div><div class="kpi-val" style="color:#fde68a">4,120 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kWh</span></div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-label"><span>📊</span> Today's Generation Curve</div>
+        <canvas id="solarChart" height="220"></canvas>
+      </div>
+      <div class="card">
+        <div class="section-label"><span>⚙️</span> System Info</div>
+        <div class="info-row"><span class="info-key">API Source</span><span class="info-val" style="color:#f59e0b">EMA / SolarEdge</span></div>
+        <div class="info-row"><span class="info-key">Panels</span><span class="info-val" style="color:#fbbf24">16 panels</span></div>
+        <div class="info-row"><span class="info-key">Inverter Temp</span><span class="info-val" style="color:#10b981">42°C</span></div>
+        <div class="info-row"><span class="info-key">Self-Consumption</span><span class="info-val" style="color:#a78bfa">68%</span></div>
+        <div class="info-row"><span class="info-key">CO₂ Today</span><span class="info-val" style="color:#10b981">1.94 kg saved</span></div>
+        <div class="info-row"><span class="info-key">Status</span><span class="info-val" style="color:#10b981">Online ✓</span></div>
+        <div class="setup-box" style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.15)">
+          <div class="setup-title" style="color:#f59e0b">🔑 EMA API Setup</div>
+          <span style="color:var(--muted)">Set <code>EMA_API_KEY</code> and <code>EMA_SITE_ID</code>. Key available in EMA portal → Account → API Access.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ VEHICLE ══ -->
+  <div id="page-vehicle" class="page">
+    <div class="card glow" style="margin-bottom:14px">
+      <div class="section-label"><span>🚗</span> Volkswagen ID. · We Connect</div>
+      <div class="vw-inner">
+        <div class="soc-wrap">
+          <svg class="soc-svg" width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="52" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"
+              stroke-dasharray="245.04 326.73" stroke-dashoffset="-40.84"
+              stroke-linecap="round" transform="rotate(135 70 70)"/>
+            <circle cx="70" cy="70" r="52" fill="none" stroke="#10b981" stroke-width="10"
+              stroke-dasharray="176.43 326.73" stroke-dashoffset="-40.84"
+              stroke-linecap="round" transform="rotate(135 70 70)"
+              style="filter:drop-shadow(0 0 8px #10b981)"/>
+            <text x="70" y="65" text-anchor="middle" fill="#10b981" font-size="22" font-weight="bold" font-family="'JetBrains Mono',monospace">72%</text>
+            <text x="70" y="83" text-anchor="middle" fill="rgba(148,163,184,0.5)" font-size="10">Charge</text>
+          </svg>
+          <div class="soc-badges">
+            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981">Plugged In</span>
+            <span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6">Charging</span>
+          </div>
+        </div>
+        <div class="vw-stats">
+          <div><div class="vw-stat-label">Range</div><div class="vw-stat-val" style="color:#3b82f6">218 km</div></div>
+          <div><div class="vw-stat-label">Charge Power</div><div class="vw-stat-val" style="color:#10b981">7.4 kW</div></div>
+          <div><div class="vw-stat-label">Target SOC</div><div class="vw-stat-val" style="color:#60a5fa">80%</div></div>
+          <div><div class="vw-stat-label">Odometer</div><div class="vw-stat-val" style="color:#94a3b8">14,832 km</div></div>
+          <div><div class="vw-stat-label">Done By</div><div class="vw-stat-val" style="color:#a78bfa">06:30</div></div>
+          <div><div class="vw-stat-label">Temp</div><div class="vw-stat-val" style="color:#f59e0b">18°C</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-label"><span>⚡</span> Tonight's Charging Session</div>
+        <canvas id="evChart" height="180"></canvas>
+      </div>
+      <div class="card">
+        <div class="section-label"><span>⚙️</span> We Connect Setup</div>
+        <div class="info-row"><span class="info-key">VIN</span><span class="info-val" style="color:#10b981">Configured ✓</span></div>
+        <div class="info-row"><span class="info-key">API Region</span><span class="info-val" style="color:#3b82f6">EMEA</span></div>
+        <div class="info-row"><span class="info-key">Auth Type</span><span class="info-val" style="color:#a78bfa">OAuth 2.0</span></div>
+        <div class="info-row"><span class="info-key">Refresh</span><span class="info-val" style="color:#f59e0b">Every 5 min</span></div>
+        <div class="setup-box" style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.15)">
+          <div class="setup-title" style="color:#3b82f6">🔑 VW API Setup</div>
+          <span style="color:var(--muted)">Set <code>VW_CLIENT_ID</code>, <code>VW_CLIENT_SECRET</code>, <code>VW_VIN</code>. Register at developer.volkswagen.com.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ UTILITY ══ -->
+  <div id="page-utility" class="page">
+    <div class="card glow" style="margin-bottom:14px">
+      <div class="section-label"><span>🏠</span> BC Hydro · Energy Consumption</div>
+      <div class="grid-4">
+        <div><div class="kpi-label">Month Usage</div><div class="kpi-val" style="color:#a78bfa">612 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kWh</span></div></div>
+        <div><div class="kpi-label">Month Cost</div><div class="kpi-val" style="color:#c084fc">$74.30</div></div>
+        <div><div class="kpi-label">Daily Average</div><div class="kpi-val" style="color:#a78bfa">20.4 <span style="font-size:13px;font-weight:400;color:var(--muted2)">kWh</span></div></div>
+        <div><div class="kpi-label">Last Bill</div><div class="kpi-val" style="color:#7c3aed">$68.40</div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-label"><span>📊</span> Daily Consumption (This Month)</div>
+        <canvas id="utilityChart" height="200"></canvas>
+      </div>
+      <div class="card">
+        <div class="section-label"><span>💰</span> BC Hydro Rate Structure</div>
+        <div class="info-row"><span class="info-key">Plan</span><span class="info-val" style="color:#a78bfa">Time-of-Use</span></div>
+        <div class="info-row"><span class="info-key">Peak Rate</span><span class="info-val" style="color:#ef4444">$0.1385/kWh</span></div>
+        <div class="info-row"><span class="info-key">Off-Peak Rate</span><span class="info-val" style="color:#10b981">$0.0917/kWh</span></div>
+        <div class="info-row"><span class="info-key">Current Rate</span><span class="info-val" style="color:#f59e0b">$0.1028/kWh</span></div>
+        <div class="info-row"><span class="info-key">Grid Import Today</span><span class="info-val" style="color:#3b82f6">1.2 kWh</span></div>
+        <div class="info-row"><span class="info-key">Grid Export Today</span><span class="info-val" style="color:#10b981">0.8 kWh</span></div>
+        <div class="setup-box" style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15)">
+          <div class="setup-title" style="color:#a78bfa">🔑 BC Hydro Setup</div>
+          <span style="color:var(--muted)">Export Green Button data from <strong>bchydro.com → My Account → Green Button</strong> or set <code>BC_HYDRO_TOKEN</code> for live API.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Energy Hub · VW We Connect · EMA Solar · BC Hydro · Home Assistant · Demo data until APIs connected</div>
+</div>
+
+<script>
+// ── CLOCK ──
+function tick() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+tick(); setInterval(tick, 1000);
+
+// ── TABS ──
+function showTab(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  setTimeout(() => initCharts(), 50);
+}
+
+// ── DATA ──
+const hours = Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}:00`);
+const solar24 = hours.map((_,i)=> i>=6&&i<=20 ? Math.max(0,Math.round(Math.sin((i-6)/14*Math.PI)*5200+Math.random()*300)) : 0);
+const home24  = hours.map(()=>Math.round(1200+Math.random()*600));
+const ev24    = hours.map((_,i)=> i>=22||i<=6 ? Math.round(2200+Math.random()*300) : 0);
+const grid24  = hours.map((_,i)=>Math.round(800+Math.random()*400-(i>=6&&i<=20?600:0)));
+const weekly  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>({
+  day:d, solar:Math.round(18+Math.random()*10),
+  grid:Math.round(10+Math.random()*8), ev:Math.round(4+Math.random()*6)
+}));
+const daily30 = Array.from({length:30},(_,i)=>({day:i+1,kwh:Math.round(15+Math.random()*15)}));
+
+// ── CHART DEFAULTS ──
+Chart.defaults.color = 'rgba(148,163,184,0.45)';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 10;
+
+const chartInstances = {};
+function destroyChart(id) { if(chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+function mkGrid() {
+  return { color:'rgba(255,255,255,0.04)', drawBorder:false };
+}
+function mkTick() {
+  return { color:'rgba(148,163,184,0.35)', maxTicksLimit:7 };
+}
+
+function initCharts() {
+  // Flow chart
+  if(document.getElementById('flowChart') && !chartInstances['flow']) {
+    destroyChart('flow');
+    chartInstances['flow'] = new Chart(document.getElementById('flowChart'), {
+      type:'line',
+      data:{
+        labels:hours,
+        datasets:[
+          {label:'Solar',data:solar24,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.08)',fill:true,tension:0.4,pointRadius:0,borderWidth:2},
+          {label:'Home',data:home24,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,0.06)',fill:true,tension:0.4,pointRadius:0,borderWidth:1.5},
+          {label:'EV',data:ev24,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.06)',fill:true,tension:0.4,pointRadius:0,borderWidth:1.5},
+          {label:'Grid',data:grid24,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.06)',fill:true,tension:0.4,pointRadius:0,borderWidth:1.5},
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:true,
+        plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(15,23,42,0.97)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#f8fafc',bodyColor:'rgba(148,163,184,0.8)',padding:10}},
+        scales:{x:{grid:mkGrid(),ticks:{...mkTick(),maxTicksLimit:6}},y:{grid:mkGrid(),ticks:mkTick()}}
+      }
+    });
+  }
+
+  // Pie
+  if(document.getElementById('pieChart') && !chartInstances['pie']) {
+    chartInstances['pie'] = new Chart(document.getElementById('pieChart'), {
+      type:'doughnut',
+      data:{labels:['Solar','BC Hydro','Battery'],datasets:[{data:[68,24,8],backgroundColor:['#f59e0b','#3b82f6','#10b981'],borderWidth:0,hoverOffset:6}]},
+      options:{
+        responsive:true, cutout:'62%',
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,23,42,0.97)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,bodyColor:'rgba(148,163,184,0.8)',callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed}%`}}}
+      }
+    });
+  }
+
+  // Weekly
+  if(document.getElementById('weeklyChart') && !chartInstances['weekly']) {
+    chartInstances['weekly'] = new Chart(document.getElementById('weeklyChart'), {
+      type:'bar',
+      data:{
+        labels:weekly.map(d=>d.day),
+        datasets:[
+          {label:'Solar kWh',data:weekly.map(d=>d.solar),backgroundColor:'rgba(245,158,11,0.75)',borderRadius:4},
+          {label:'Grid kWh',data:weekly.map(d=>d.grid),backgroundColor:'rgba(59,130,246,0.75)',borderRadius:4},
+          {label:'EV kWh',data:weekly.map(d=>d.ev),backgroundColor:'rgba(16,185,129,0.75)',borderRadius:4},
+        ]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,23,42,0.97)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1}},
+        scales:{x:{grid:mkGrid(),ticks:mkTick()},y:{grid:mkGrid(),ticks:mkTick()}}
+      }
+    });
+  }
+
+  // Solar curve
+  if(document.getElementById('solarChart') && !chartInstances['solar']) {
+    chartInstances['solar'] = new Chart(document.getElementById('solarChart'), {
+      type:'line',
+      data:{labels:hours,datasets:[{label:'Solar W',data:solar24,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.1)',fill:true,tension:0.4,pointRadius:0,borderWidth:2.5}]},
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,23,42,0.97)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1}},
+        scales:{x:{grid:mkGrid(),ticks:{...mkTick(),maxTicksLimit:6}},y:{grid:mkGrid(),ticks:mkTick()}}
+      }
+    });
+  }
+
+  // EV charging
+  if(document.getElementById('evChart') && !chartInstances['ev']) {
+    const evHours = hours.filter((_,i)=>i>=22||i<=6);
+    const evData  = ev24.filter((_,i)=>i>=22||i<=6);
+    chartInstances['ev'] = new Chart(document.getElementById('evChart'), {
+      type:'line',
+      data:{labels:evHours,datasets:[{label:'EV W',data:evData,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,tension:0.4,pointRadius:0,borderWidth:2.5}]},
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,23,42,0.97)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1}},
+        scales:{x:{grid:mkGrid(),ticks:mkTick()},y:{grid:mkGrid(),ticks:mkTick()}}
+      }
+    });
+  }
+
+  // Utility daily
+  if(document.getElementById('utilityChart') && !chartInstances['utility']) {
+    chartInstances['utility'] = new Chart(document.getElementById('utilityChart'), {
+      type:'bar',
+      data:{labels:daily30.map(d=>d.day),datasets:[{label:'kWh',data:daily30.map(d=>d.kwh),backgroundColor:'rgba(167,139,250,0.7)',borderRadius:3}]},
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,23,42,0.97)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1}},
+        scales:{x:{grid:mkGrid(),ticks:{...mkTick(),maxTicksLimit:8}},y:{grid:mkGrid(),ticks:mkTick()}}
+      }
+    });
+  }
+}
+
+// Init on load
+window.addEventListener('load', initCharts);
+</script>
+</body>
+</html>
