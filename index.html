@@ -433,7 +433,7 @@
 // AP SYSTEMS EMA API CONFIGURATION
 // Replace these two values with your real credentials
 // ══════════════════════════════════════════════
-const EMA_API_KEY = 'YOUR_API_KEY_HERE';   // From EMA portal → Account → API
+const EMA_API_KEY = '2c9f934a95fc95a7019613fa63a23ad2';   // From EMA portal → Account → API
 const EMA_ECU_ID  = 'YOUR_ECU_ID_HERE';   // From EMA app → Devices → ECU ID
 
 // AP Systems EMA API — routed through CORS proxy
@@ -513,7 +513,7 @@ async function fetchSolarData() {
       todayKwh:   22.6,
       monthKwh:   487,
       co2Saved:   1.94,
-      status:     EMA_API_KEY === 'YOUR_API_KEY_HERE' ? 'demo' : 'error',
+      status:     EMA_API_KEY === '2c9f934a95fc95a7019613fa63a23ad2' ? 'demo' : 'error',
       lastUpdate: new Date(),
     };
     updateSolarUI();
