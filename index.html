@@ -312,32 +312,48 @@
   <!-- ══ SOLAR ══ -->
   <div id="page-solar" class="page">
     <div class="card glow" style="margin-bottom:14px">
-      <div class="section-label"><span>☀️</span> EMA Solar System · Live</div>
-      <div class="grid-4">
-        <div><div class="kpi-label">Current Output</div><div class="kpi-val" style="color:#f59e0b"><span id="sol-current">--</span> <span style="font-size:13px;font-weight:400;color:var(--muted2)">kW</span></div></div>
-        <div><div class="kpi-label">Today</div><div class="kpi-val" style="color:#fbbf24"><span id="sol-today">--</span> <span style="font-size:13px;font-weight:400;color:var(--muted2)">kWh</span></div></div>
-        <div><div class="kpi-label">This Month</div><div class="kpi-val" style="color:#f59e0b"><span id="sol-month">--</span> <span style="font-size:13px;font-weight:400;color:var(--muted2)">kWh</span></div></div>
-        <div><div class="kpi-label">CO₂ Saved</div><div class="kpi-val" style="color:#10b981"><span id="sol-co2">--</span> <span style="font-size:13px;font-weight:400;color:var(--muted2)">kg</span></div></div>
+      <div class="section-label"><span>☀️</span> EMA Solar System · Live via AP Systems</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:11px;color:var(--muted2)">Powered by your real AP Systems EMA data</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(245,158,11,0.15);color:#f59e0b">LIVE</span>
       </div>
-      <div style="margin-top:10px;font-size:11px;color:var(--muted2)">Last updated: <span id="sol-updated">--</span></div>
+      <!-- AP Systems EMA iframe embed — using your authorization code -->
+      <div style="border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.07)">
+        <iframe
+          id="ema-frame"
+          width="100%"
+          height="600"
+          frameborder="0"
+          scrolling="auto"
+          src="https://www.apsystemsema.com/ema/intoDemoUser.action?id=2c9f934a95fc95a7019613fa63a23ad2&locale=en_US"
+          style="display:block;background:#0f172a"
+        ></iframe>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted2)">
+        📡 Live data from AP Systems EMA · DS3 Microinverter System · Auto-refreshes with EMA portal
+      </div>
     </div>
-    <div class="grid-2">
+    <!-- Quick stats below iframe -->
+    <div class="grid-4" style="margin-top:14px">
       <div class="card">
-        <div class="section-label"><span>📊</span> Today's Generation Curve</div>
-        <canvas id="solarChart" height="220"></canvas>
+        <div class="kpi-label">System</div>
+        <div class="kpi-val" style="color:#f59e0b;font-size:16px">AP Systems DS3</div>
+        <div class="kpi-sub">Microinverter</div>
       </div>
       <div class="card">
-        <div class="section-label"><span>⚙️</span> System Info</div>
-        <div class="info-row"><span class="info-key">API Source</span><span class="info-val" style="color:#f59e0b">EMA / SolarEdge</span></div>
-        <div class="info-row"><span class="info-key">Panels</span><span class="info-val" style="color:#fbbf24">16 panels</span></div>
-        <div class="info-row"><span class="info-key">Inverter Temp</span><span class="info-val" style="color:#10b981">42°C</span></div>
-        <div class="info-row"><span class="info-key">Self-Consumption</span><span class="info-val" style="color:#a78bfa">68%</span></div>
-        <div class="info-row"><span class="info-key">CO₂ Today</span><span class="info-val" style="color:#10b981">1.94 kg saved</span></div>
-        <div class="info-row"><span class="info-key">Status</span><span class="info-val" style="color:#10b981">Online ✓</span></div>
-        <div class="setup-box" style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.15)">
-          <div class="setup-title" style="color:#f59e0b">🔑 EMA API Setup</div>
-          <span style="color:var(--muted)">Set <code>EMA_API_KEY</code> and <code>EMA_SITE_ID</code>. Key available in EMA portal → Account → API Access.</span>
-        </div>
+        <div class="kpi-label">Location</div>
+        <div class="kpi-val" style="color:#3b82f6;font-size:16px">BC, Canada</div>
+        <div class="kpi-sub">BC Hydro Grid</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Utility</div>
+        <div class="kpi-val" style="color:#a78bfa;font-size:16px">BC Hydro</div>
+        <div class="kpi-sub">Time-of-Use</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">CO₂ Factor</div>
+        <div class="kpi-val" style="color:#10b981;font-size:16px">0.086</div>
+        <div class="kpi-sub">kg/kWh saved</div>
       </div>
     </div>
   </div>
@@ -429,141 +445,8 @@
 </div>
 
 <script>
-// ══════════════════════════════════════════════
-// AP SYSTEMS EMA API CONFIGURATION
-// Replace these two values with your real credentials
-// ══════════════════════════════════════════════
-const EMA_API_KEY = '2c9f934a95fc95a7019613fa63a23ad2';   // From EMA portal → Account → API
-const EMA_ECU_ID  = '216000193030';   // From EMA app → Devices → ECU ID
-
-// AP Systems EMA API — routed through CORS proxy
-const CORS_PROXY = 'https://corsproxy.io/?';
-const EMA_BASE_REAL = 'https://aps-api.apsystemsema.com/apsema/v1';
-const EMA_BASE = url => CORS_PROXY + encodeURIComponent(EMA_BASE_REAL + url);
-
-// Live solar data state
-let solarLive = {
-  currentW:   0,
-  todayKwh:   0,
-  monthKwh:   0,
-  co2Saved:   0,
-  status:     'loading',
-  lastUpdate: null,
-};
-
-// ── FETCH LIVE SOLAR DATA FROM AP SYSTEMS EMA ──
-async function fetchSolarData() {
-  try {
-    updateSolarStatus('syncing');
-
-    // Current output power
-    const powerRes = await fetch(EMA_BASE('/ecu/getRealtimeData'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${EMA_API_KEY}`,
-      },
-      body: JSON.stringify({ ecuId: EMA_ECU_ID }),
-    });
-
-    // Today's energy
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const energyRes = await fetch(EMA_BASE('/ecu/getEnergyData'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${EMA_API_KEY}`,
-      },
-      body: JSON.stringify({ ecuId: EMA_ECU_ID, date: today, queryType: 'day' }),
-    });
-
-    // Monthly energy
-    const month = today.substring(0, 6);
-    const monthRes = await fetch(EMA_BASE('/ecu/getEnergyData'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${EMA_API_KEY}`,
-      },
-      body: JSON.stringify({ ecuId: EMA_ECU_ID, date: month, queryType: 'month' }),
-    });
-
-    if (powerRes.ok && energyRes.ok && monthRes.ok) {
-      const powerData   = await powerRes.json();
-      const energyData  = await energyRes.json();
-      const monthData   = await monthRes.json();
-
-      // Parse AP Systems response format
-      const currentW  = parseFloat(powerData?.data?.power  ?? 0) * 1000; // convert kW → W
-      const todayKwh  = parseFloat(energyData?.data?.energy ?? 0);
-      const monthKwh  = parseFloat(monthData?.data?.energy  ?? 0);
-      const co2Saved  = +(todayKwh * 0.0859).toFixed(2); // BC Hydro grid emission factor
-
-      solarLive = { currentW, todayKwh, monthKwh, co2Saved, status: 'live', lastUpdate: new Date() };
-      updateSolarUI();
-    } else {
-      throw new Error('API response error');
-    }
-
-  } catch (err) {
-    console.warn('[EMA API] Using demo data —', err.message);
-    // Fallback to realistic demo data if API fails or keys not set
-    solarLive = {
-      currentW:   3840,
-      todayKwh:   22.6,
-      monthKwh:   487,
-      co2Saved:   1.94,
-      status:     EMA_API_KEY === '2c9f934a95fc95a7019613fa63a23ad2' ? 'demo' : 'error',
-      lastUpdate: new Date(),
-    };
-    updateSolarUI();
-  }
-}
-
-// ── UPDATE SOLAR UI WITH LIVE DATA ──
-function updateSolarUI() {
-  const { currentW, todayKwh, monthKwh, co2Saved, status } = solarLive;
-
-  // Overview KPI
-  const el = id => document.getElementById(id);
-  if (el('solar-kw'))      el('solar-kw').textContent      = (currentW / 1000).toFixed(2);
-  if (el('solar-today'))   el('solar-today').textContent   = todayKwh.toFixed(1);
-  if (el('solar-status'))  el('solar-status').textContent  = status === 'live' ? 'LIVE' : status === 'demo' ? 'DEMO' : 'ERR';
-
-  // Solar tab KPIs
-  if (el('sol-current'))   el('sol-current').textContent   = (currentW / 1000).toFixed(2);
-  if (el('sol-today'))     el('sol-today').textContent     = todayKwh.toFixed(1);
-  if (el('sol-month'))     el('sol-month').textContent     = monthKwh.toFixed(0);
-  if (el('sol-co2'))       el('sol-co2').textContent       = co2Saved.toFixed(2);
-  if (el('sol-updated'))   el('sol-updated').textContent   = solarLive.lastUpdate?.toLocaleTimeString() ?? '--';
-
-  // Sustainability bar — CO2
-  const co2Bar = document.getElementById('co2-bar');
-  const co2Val = document.getElementById('co2-val');
-  if (co2Bar) co2Bar.style.width = Math.min(100, co2Saved * 20) + '%';
-  if (co2Val) co2Val.textContent = `${co2Saved} kg`;
-
-  // Update solar dot color
-  const dot = document.querySelector('.solar-dot');
-  if (dot) dot.style.background = status === 'live' ? '#f59e0b' : status === 'error' ? '#ef4444' : '#f59e0b';
-
-  // Update solar chart if visible
-  if (chartInstances['solar'] && currentW > 0) {
-    const now = new Date().getHours();
-    const d = chartInstances['solar'].data.datasets[0].data;
-    d[now] = currentW;
-    chartInstances['solar'].update('none');
-  }
-}
-
-function updateSolarStatus(s) {
-  const el = document.getElementById('solar-status');
-  if (el) el.textContent = s.toUpperCase();
-}
-
-// ── AUTO REFRESH EVERY 5 MINUTES ──
-fetchSolarData();
-setInterval(fetchSolarData, 5 * 60 * 1000);
+// ── Solar is now embedded via AP Systems EMA iframe ──
+// No API calls needed — data loads directly from EMA portal
 
 // ── CLOCK ──
 function tick() {
